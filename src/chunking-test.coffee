@@ -30,10 +30,14 @@ exports.app =
         ])
         return true
 
+    # /info 接口
     info: (req, res, _) ->
         info = {
+            # websocket 为 false 则禁用 websocket 协议
             websocket: @options.websocket,
+            # 启用cors支持 对于iframe 等协议有用
             origins: ['*:*'] unless @options.disable_cors,
+            # jsessionid
             cookie_needed: not not @options.jsessionid,
             entropy: utils.random32(),
         }
@@ -48,6 +52,7 @@ exports.app =
         res.writeHead(200)
         res.end(JSON.stringify(info))
 
+    # 
     info_options: (req, res) ->
         res.statusCode = 204
         res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET')

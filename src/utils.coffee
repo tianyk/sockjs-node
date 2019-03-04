@@ -68,6 +68,8 @@ exports.objectExtend = (dst, src) ->
 exports.overshadowListeners = (ee, event, handler) ->
     # listeners() returns a reference to the internal array of EventEmitter.
     # Make a copy, because we're about the replace the actual listeners.
+    # 老事件函数
+    # https://nodejs.org/dist/latest-v10.x/docs/api/events.html#events_emitter_listeners_eventname
     old_listeners = ee.listeners(event).slice(0)
 
     ee.removeAllListeners(event)

@@ -3,7 +3,7 @@
 #
 # For the license see COPYING.
 # ***** END LICENSE BLOCK *****
-
+# 封装了一个简单的web框架
 url = require('url')
 querystring = require('querystring')
 fs = require('fs')

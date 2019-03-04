@@ -121,6 +121,7 @@ class RawWebsocketSessionReceiver extends transport.Session
         @_end_cb = => @didClose()
         @ws.addEventListener('close', @_end_cb)
         @_message_cb = (m) => @didMessage(m)
+        # 绑点原生 message 事件
         @ws.addEventListener('message', @_message_cb)
 
     didMessage: (m) ->
@@ -144,8 +145,11 @@ class RawWebsocketSessionReceiver extends transport.Session
     didClose: ->
         if not @ws
             return
+        
+        # 卸载事件 
         @ws.removeEventListener('message', @_message_cb)
         @ws.removeEventListener('close', @_end_cb)
+        # 关闭
         try
             @ws.close(1000, "Normal closure", false)
         catch x

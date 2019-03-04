@@ -3,6 +3,7 @@
 #
 # For the license see COPYING.
 # ***** END LICENSE BLOCK *****
+# 入口
 
 events = require('events')
 fs = require('fs')
@@ -25,12 +26,13 @@ sockjsVersion = ->
 
 
 class App extends webjs.GenericApp
+    # /${prefix}/ 主页
     welcome_screen: (req, res) ->
         res.setHeader('content-type', 'text/plain; charset=UTF-8')
         res.writeHead(200)
         res.end("Welcome to SockJS!\n")
         return true
-
+    # /${prefix}/404 404界面
     handle_404: (req, res) ->
         res.setHeader('content-type', 'text/plain; charset=UTF-8')
         res.writeHead(404)
@@ -40,6 +42,7 @@ class App extends webjs.GenericApp
     disabled_transport: (req, res, data) ->
         return @handle_404(req, res, data)
 
+    # 如果 jsessionid 为true 会读取 JSESSIONID 并且每次重新设置。设置sessionId 
     h_sid: (req, res, data) ->
         # Some load balancers do sticky sessions, but only if there is
         # a JSESSIONID cookie. If this cookie isn't yet set, we shall
@@ -60,29 +63,43 @@ class App extends webjs.GenericApp
         @options.log(severity, line)
 
 
+# 扩展了.iframe方法
 utils.objectExtend(App.prototype, iframe.app)
 utils.objectExtend(App.prototype, chunking_test.app)
 
+# 扩展了 sockjs_websocket raw_websocket 方法
 utils.objectExtend(App.prototype, trans_websocket.app)
+# 扩展了 jsonp 和 jsonp_send 方法
 utils.objectExtend(App.prototype, trans_jsonp.app)
 utils.objectExtend(App.prototype, trans_xhr.app)
 utils.objectExtend(App.prototype, trans_eventsource.app)
 utils.objectExtend(App.prototype, trans_htmlfile.app)
 
 
+# 路由器
 generate_dispatcher = (options) ->
+        # 正则路由匹配 prefix 
         p = (s) => new RegExp('^' + options.prefix + s + '[/]?$')
         t = (s) => [p('/([^/.]+)/([^/.]+)' + s), 'server', 'session']
         opts_filters = (options_filter='xhr_options') ->
             return ['h_sid', 'xhr_cors', 'cache_for', options_filter, 'expose']
+
+        # 第三个参数为中间件链条
         prefix_dispatcher = [
+            # ${prefix}
             ['GET',     p(''), ['welcome_screen']],
+            # ${prefix}/iframe.html
             ['GET',     p('/iframe[0-9-.a-z_]*.html'), ['iframe', 'cache_for', 'expose']],
+            # OPTIONS ${prefix}/info 
             ['OPTIONS', p('/info'), opts_filters('info_options')],
+            # ${prefix}/info 
             ['GET',     p('/info'), ['xhr_cors', 'h_no_cache', 'info', 'expose']],
+            # OPTIONS ${prefix}/chunking_test 
             ['OPTIONS', p('/chunking_test'), opts_filters()],
+            # ${prefix}/chunking_test 
             ['POST',    p('/chunking_test'), ['xhr_cors', 'expect_xhr', 'chunking_test']]
         ]
+        # 传输协议路由
         transport_dispatcher = [
             ['GET',     t('/jsonp'), ['h_sid', 'h_no_cache', 'jsonp']],
             ['POST',    t('/jsonp_send'), ['h_sid', 'h_no_cache', 'expect_form', 'jsonp_send']],
@@ -96,6 +113,7 @@ generate_dispatcher = (options) ->
             ['GET',     t('/htmlfile'),    ['h_sid', 'h_no_cache', 'htmlfile']],
         ]
 
+        # 是否开启 websocket 协议
         # TODO: remove this code on next major release
         if options.websocket
             prefix_dispatcher.push(
@@ -136,7 +154,9 @@ class Server extends events.EventEmitter
     constructor: (user_options) ->
         @options =
             prefix: ''
+            # 部分协议
             response_limit: 128*1024
+            # 如果为 false 禁用 websocket 协议
             websocket: true
             faye_server_options: null
             jsessionid: false
@@ -164,9 +184,11 @@ class Server extends events.EventEmitter
         handler.upgrade = handler
         return handler
 
+# 获取一个 sockServer 对象
 exports.createServer = (options) ->
     return new Server(options)
 
+# 先创建一个 sockServer 对象，然后 installHandlers 初始化 
 exports.listen = (http_server, options) ->
     srv = exports.createServer(options)
     if http_server
